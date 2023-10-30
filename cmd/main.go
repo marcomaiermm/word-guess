@@ -8,8 +8,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/marcomaiermm/go-vite-template/pkg/database"
-	"github.com/marcomaiermm/go-vite-vemplate/pkg/pages"
+	"github.com/marcomaiermm/word-guess/pkg/database"
+	"github.com/marcomaiermm/word-guess/pkg/pages"
 )
 
 type TemplateRenderer struct {
