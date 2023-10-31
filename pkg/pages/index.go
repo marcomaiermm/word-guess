@@ -17,7 +17,7 @@ type IndexPage struct {
 func renderIndexPage(c echo.Context) error {
 	return c.Render(200, "index.html", IndexPage{
 		Page: Page{
-			Title: "Game Merchant",
+			Title: "Play Word Guess!",
 		},
 	})
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"unicode"
 )
 
 type WordsResponse struct {
@@ -12,7 +13,6 @@ type WordsResponse struct {
 
 func GetWordsList() (*WordsResponse, error) {
 	resp, err := http.Get("https://www.randomlists.com/data/words.json")
-
 	if err != nil {
 		return nil, err
 	}
@@ -28,4 +28,13 @@ func GetWordsList() (*WordsResponse, error) {
 	}
 
 	return &words, nil
+}
+
+func HasSpecialChar(input string) bool {
+	for _, r := range input {
+		if !unicode.IsLetter(r) && !unicode.IsNumber(r) {
+			return true
+		}
+	}
+	return false
 }
