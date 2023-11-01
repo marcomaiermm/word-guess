@@ -1,0 +1,17 @@
+<section id="item-list" class="space-y-1">
+  {{range $row := .Rows}}
+  <div class="flex gap-x-1">
+    {{range $symbol := $row.Symbol}}
+    <div
+      class="grid h-12 w-10 place-items-center overflow-hidden border bg-stone-200 dark:bg-black {{if $symbol.Correct}} border-amber-500 {{else}} border-input {{end}}"
+    >
+      <span
+        class="text-base uppercase {{if $symbol.Correct}} text-amber-500 {{end}}"
+      >
+        {{$symbol.Letter}}
+      </span>
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+</section>

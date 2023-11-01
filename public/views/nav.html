@@ -1,0 +1,20 @@
+<header class="container mx-auto">
+  <nav class="grid grid-cols-3 p-4">
+    <div></div>
+    <div class="grid place-items-center">{{.Title}}</div>
+    <div class="flex justify-end">
+      <select
+        onchange="switchTheme(this.value)"
+        class="bg-background text-foreground"
+      >
+        <option class="bg-background text-foreground" value="dark">Dark</option>
+        <option class="bg-background text-foreground" value="light">
+          Light
+        </option>
+        <option class="bg-background text-foreground" value="system">
+          System
+        </option>
+      </select>
+    </div>
+  </nav>
+</header>

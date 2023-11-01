@@ -2,7 +2,6 @@ package database
 
 import (
 	"errors"
-	"math/rand"
 	"strings"
 
 	"github.com/google/uuid"
@@ -15,7 +14,6 @@ type Game struct {
 	Word    string
 	Rows    int
 	Symbols []string
-	Won     bool
 }
 
 type GameInDb struct {
@@ -23,8 +21,8 @@ type GameInDb struct {
 	UUID      string
 	Rows      int
 	Symbols   string
+	WordID    int
 	Word      string
-	Won       bool
 	CreatedAt string
 	UpdatedAt string
 }
@@ -34,7 +32,7 @@ type WordsResponse struct {
 }
 
 func GetGameByUUID(uuid string) (*GameInDb, error) {
-	row := DB.QueryRow("SELECT * FROM game WHERE uuid = ?", uuid)
+	row := DB.QueryRow("SELECT game.id, game.uuid, game.rows, game.symbols, game.word_id, game.created_at, game.updated_at, word.word FROM game LEFT JOIN word ON game.word_id = word.id WHERE game.uuid = ?", uuid)
 
 	var game GameInDb
 
@@ -43,8 +41,10 @@ func GetGameByUUID(uuid string) (*GameInDb, error) {
 		&game.UUID,
 		&game.Rows,
 		&game.Symbols,
+		&game.WordID,
+		&game.CreatedAt,
+		&game.UpdatedAt,
 		&game.Word,
-		&game.Won,
 	)
 	if err != nil {
 		return nil, err
@@ -54,27 +54,27 @@ func GetGameByUUID(uuid string) (*GameInDb, error) {
 }
 
 func CreateGame(rows int) (*GameInDb, error) {
-	words, err := internals.GetWordsList()
+	var word string
+	var wordId int
+	err := DB.QueryRow("SELECT id, word FROM Word ORDER BY RANDOM() LIMIT 1").Scan(&wordId, &word)
 	if err != nil {
 		return nil, err
 	}
 
-	randomIndex := rand.Intn(len(words.Data))
-	randomWord := words.Data[randomIndex]
 	newUUID := uuid.New().String()
 	symbols := strings.Repeat(",", rows)
 
-	row := DB.QueryRow("INSERT INTO game (uuid, word, rows, symbols) VALUES (?, ?, ?, ?) RETURNING *", newUUID, randomWord, rows, symbols)
+	row := DB.QueryRow("INSERT INTO game (uuid, rows, symbols, word_id) VALUES (?, ?, ?, ?) RETURNING id, uuid, rows, symbols, created_at, updated_at", newUUID, rows, symbols, wordId)
 
-	var game GameInDb
+	game := GameInDb{
+		Word: word,
+	}
 
 	err = row.Scan(
 		&game.ID,
 		&game.UUID,
 		&game.Rows,
 		&game.Symbols,
-		&game.Word,
-		&game.Won,
 		&game.CreatedAt,
 		&game.UpdatedAt,
 	)
@@ -87,12 +87,11 @@ func CreateGame(rows int) (*GameInDb, error) {
 }
 
 type UpdateGameParams struct {
-	UUID     string
-	PlayerId string
-	Symbols  string
+	UUID    string
+	Symbols string
 }
 
-func UpdateGame(params UpdateGameParams) (*Game, error) {
+func UpdateGame(params UpdateGameParams) (*GameInDb, error) {
 	existingGame, err := GetGameByUUID(params.UUID)
 	if err != nil {
 		return nil, err
@@ -102,36 +101,38 @@ func UpdateGame(params UpdateGameParams) (*Game, error) {
 		return nil, errors.New("symbols length does not match word length")
 	}
 
-	if len(strings.Split(existingGame.Symbols, ",")) == existingGame.Rows {
-		return nil, errors.New("no more rows available")
-	}
+	symbols := strings.Split(existingGame.Symbols, ",")[:existingGame.Rows]
 
 	// cant contain special characters
 	if internals.HasSpecialChar(params.Symbols) {
 		return nil, errors.New("symbols cannot contain special characters")
 	}
 
-	won := existingGame.Word == params.Symbols
-	rowSymbols := existingGame.Symbols + params.Symbols + ","
+	for i, symbol := range symbols {
+		if symbol == "" {
+			symbols[i] = string(params.Symbols)
+			break
+		}
+	}
+	rowSymbols := strings.Join(symbols, ",")
 
-	row := DB.QueryRow("UPDATE game SET symbols = ?, won = ? WHERE uuid = ? RETURNING id, uuid, word, won", rowSymbols, won, params.UUID)
-
-	updatedGame := Game{
-		Symbols: strings.Split(rowSymbols, ","),
+	game := GameInDb{
+		Word: existingGame.Word,
 	}
 
-	err = row.Scan(
-		&updatedGame.ID,
-		&updatedGame.UUID,
-		&updatedGame.Word,
-		&updatedGame.Won,
+	err = DB.QueryRow("UPDATE game SET symbols = ? WHERE uuid = ? RETURNING id, uuid, rows, symbols, created_at, updated_at", rowSymbols, params.UUID).Scan(
+		&game.ID,
+		&game.UUID,
+		&game.Rows,
+		&game.Symbols,
+		&game.CreatedAt,
+		&game.UpdatedAt,
 	)
-
 	if err != nil {
 		return nil, err
 	}
 
-	return &updatedGame, nil
+	return &game, nil
 }
 
 func DeleteGame(uuid string) error {

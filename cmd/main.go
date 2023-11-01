@@ -58,7 +58,13 @@ func main() {
 		AllowOriginFunc: allowOrigin,
 		AllowMethods:    []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
 	}))
-	e.Use(middleware.CSRF())
+	e.Use(middleware.CSRFWithConfig(middleware.CSRFConfig{
+		TokenLookup:    "cookie:_csrf",
+		CookiePath:     "/",
+		CookieSecure:   true,
+		CookieHTTPOnly: true,
+		CookieSameSite: http.SameSiteStrictMode,
+	}))
 	e.Use(middleware.Secure())
 	e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(20)))
 	e.Use(session.Middleware(sessions.NewCookieStore([]byte("secret"))))
@@ -66,6 +72,7 @@ func main() {
 	e.Static("/dist", "dist")
 
 	e.GET("/", pages.Index)
+	e.PATCH("/game/:id", pages.Guess)
 
 	e.Logger.Fatal(e.Start(":42069"))
 }

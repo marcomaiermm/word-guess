@@ -1,0 +1,19 @@
+<section>
+  <!--W-->
+  {{if .Won}}
+  <p class="text-center text-xl text-lime-500">You won!</p>
+  {{end}}
+  <!--L-->
+  {{if .Lost}}
+  <p class="text-center text-rose-500">Awww sad... you lost</p>
+  <div class="pt-4"></div>
+  <p class="text-center">The word was:</p>
+  <p class="text-center text-2xl font-bold text-amber-500">{{.Word}}</p>
+  {{end}}
+  <!--Game Over-->
+  {{if or .Won .Lost}}
+  <div class="flex justify-center">
+    <a href="/" class="text-amber-500 hover:underline"> Play again </a>
+  </div>
+  {{end}}
+</section>
