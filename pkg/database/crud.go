@@ -9,19 +9,6 @@ import (
 	internals "github.com/marcomaiermm/word-guess/internals"
 )
 
-type Player struct {
-	ID    int64
-	UUID  string
-	Name  string
-	Score int
-}
-
-type PlayerInDb struct {
-	Player
-	CreatedAt string
-	UpdatedAt string
-}
-
 type Game struct {
 	ID      int64
 	UUID    string
@@ -40,118 +27,24 @@ type GameInDb struct {
 	Won       bool
 	CreatedAt string
 	UpdatedAt string
-	PlayerId  int64
 }
 
 type WordsResponse struct {
 	Data []string `json:"data"`
 }
 
-func GetPlayer(id int64) (*Player, error) {
-	row := DB.QueryRow("SELECT player.id, player.name, player.score FROM player WHERE id = ?", id)
-
-	var player Player
-
-	err := row.Scan(
-		&player.ID,
-		&player.Name,
-		&player.Score,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return &player, nil
-}
-
-func CreatePlayer(name string) (*PlayerInDb, error) {
-	newUUID := uuid.New().String()
-	row := DB.QueryRow("INSERT INTO player (uuid, name, score) VALUES (?, ?) RETURNING id, name, score", newUUID, name, 0)
-
-	var player PlayerInDb
-
-	err := row.Scan(
-		&player.ID,
-		&player.UUID,
-		&player.Name,
-		&player.Score,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return &player, nil
-}
-
-type UpdatePlayerParams struct {
-	ID    int64
-	Name  string
-	Score int
-}
-
-func UpdatePlayer(params UpdatePlayerParams) (*PlayerInDb, error) {
-	// build args
-	args := make([]interface{}, 0)
-
-	// build query
-	query := "UPDATE player SET "
-	if params.Name != "" {
-		query += "name = ?, "
-		args = append(args, params.Name)
-	}
-	if params.Score != 0 {
-		query += "score = ?, "
-		args = append(args, params.Score)
-	}
-
-	query = query[:len(query)-2]
-	query += " WHERE id = ? RETURNING id, uuid, name, score"
-
-	args = append(args, params.ID)
-
-	row := DB.QueryRow(query, args...)
-
-	var player PlayerInDb
-
-	err := row.Scan(
-		&player.ID,
-		&player.UUID,
-		&player.Name,
-		&player.Score,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return &player, nil
-}
-
-func DeletePlayer(id int64) error {
-	_, err := DB.Exec("DELETE FROM player WHERE id = ?", id)
-	if err != nil {
-		return err
-	}
-
-	_, err = DB.Exec("DELETE FROM game WHERE player_id = ?", id)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func GetGameByUUID(uuid string, player_id int64) (*GameInDb, error) {
-	row := DB.QueryRow("SELECT * FROM game WHERE uuid = ? AND player_id = ?", uuid, player_id)
+func GetGameByUUID(uuid string) (*GameInDb, error) {
+	row := DB.QueryRow("SELECT * FROM game WHERE uuid = ?", uuid)
 
 	var game GameInDb
 
 	err := row.Scan(
 		&game.ID,
 		&game.UUID,
-		&game.Symbols,
 		&game.Rows,
-		&game.Won,
+		&game.Symbols,
 		&game.Word,
+		&game.Won,
 	)
 	if err != nil {
 		return nil, err
@@ -160,7 +53,7 @@ func GetGameByUUID(uuid string, player_id int64) (*GameInDb, error) {
 	return &game, nil
 }
 
-func CreateGame(rows int, player_id int64) (*GameInDb, error) {
+func CreateGame(rows int) (*GameInDb, error) {
 	words, err := internals.GetWordsList()
 	if err != nil {
 		return nil, err
@@ -169,21 +62,21 @@ func CreateGame(rows int, player_id int64) (*GameInDb, error) {
 	randomIndex := rand.Intn(len(words.Data))
 	randomWord := words.Data[randomIndex]
 	newUUID := uuid.New().String()
+	symbols := strings.Repeat(",", rows)
 
-	row := DB.QueryRow("INSERT INTO game (uuid, word, rows, player_id) VALUES (?, ?, ?, ?) RETURNING *", newUUID, randomWord, rows, player_id)
+	row := DB.QueryRow("INSERT INTO game (uuid, word, rows, symbols) VALUES (?, ?, ?, ?) RETURNING *", newUUID, randomWord, rows, symbols)
 
 	var game GameInDb
 
 	err = row.Scan(
 		&game.ID,
 		&game.UUID,
-		&game.Word,
 		&game.Rows,
 		&game.Symbols,
+		&game.Word,
 		&game.Won,
 		&game.CreatedAt,
 		&game.UpdatedAt,
-		&game.PlayerId,
 	)
 
 	if err != nil {
@@ -194,13 +87,13 @@ func CreateGame(rows int, player_id int64) (*GameInDb, error) {
 }
 
 type UpdateGameParams struct {
-	PlayerId int64
 	UUID     string
+	PlayerId string
 	Symbols  string
 }
 
 func UpdateGame(params UpdateGameParams) (*Game, error) {
-	existingGame, err := GetGameByUUID(params.UUID, params.PlayerId)
+	existingGame, err := GetGameByUUID(params.UUID)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +102,7 @@ func UpdateGame(params UpdateGameParams) (*Game, error) {
 		return nil, errors.New("symbols length does not match word length")
 	}
 
-	if len(strings.Split(existingGame.Symbols, ";")) == existingGame.Rows {
+	if len(strings.Split(existingGame.Symbols, ",")) == existingGame.Rows {
 		return nil, errors.New("no more rows available")
 	}
 
@@ -219,12 +112,12 @@ func UpdateGame(params UpdateGameParams) (*Game, error) {
 	}
 
 	won := existingGame.Word == params.Symbols
-	rowSymbols := existingGame.Symbols + params.Symbols + ";"
+	rowSymbols := existingGame.Symbols + params.Symbols + ","
 
-	row := DB.QueryRow("UPDATE game SET symbols = ?, won = ? WHERE uuid = ? AND player_id = ? RETURNING id, uuid, word, won", rowSymbols, won, params.UUID, params.PlayerId)
+	row := DB.QueryRow("UPDATE game SET symbols = ?, won = ? WHERE uuid = ? RETURNING id, uuid, word, won", rowSymbols, won, params.UUID)
 
 	updatedGame := Game{
-		Symbols: strings.Split(rowSymbols, ";"),
+		Symbols: strings.Split(rowSymbols, ","),
 	}
 
 	err = row.Scan(
@@ -241,8 +134,8 @@ func UpdateGame(params UpdateGameParams) (*Game, error) {
 	return &updatedGame, nil
 }
 
-func DeleteGame(uuid string, player_id int64) error {
-	_, err := DB.Exec("DELETE FROM game WHERE uuid = ? AND player_id = ?", uuid, player_id)
+func DeleteGame(uuid string) error {
+	_, err := DB.Exec("DELETE FROM game WHERE uuid = ?", uuid)
 	if err != nil {
 		return err
 	}

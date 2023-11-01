@@ -4,8 +4,12 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"net/http"
 	"os"
+	"regexp"
 
+	"github.com/gorilla/sessions"
+	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/marcomaiermm/word-guess/pkg/database"
@@ -18,6 +22,12 @@ type TemplateRenderer struct {
 
 func (t *TemplateRenderer) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
 	return t.template.ExecuteTemplate(w, name, data)
+}
+
+// allowOrigin takes the origin as an argument and returns true if the origin
+// is allowed or false otherwise.
+func allowOrigin(origin string) (bool, error) {
+	return regexp.MatchString(`^https:\/\/marcomaier\.dev$`, origin)
 }
 
 func main() {
@@ -42,6 +52,17 @@ func main() {
 	}
 
 	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOriginFunc: allowOrigin,
+		AllowMethods:    []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
+	}))
+	e.Use(middleware.CSRF())
+	e.Use(middleware.Secure())
+	e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(20)))
+	e.Use(session.Middleware(sessions.NewCookieStore([]byte("secret"))))
+
 	e.Static("/dist", "dist")
 
 	e.GET("/", pages.Index)
