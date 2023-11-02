@@ -13,6 +13,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@main
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Cache Docker layers
+        uses: actions/cache@main
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
@@ -23,18 +34,28 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          tags: ${{ secrets.DOCKER_USERNAME }}/word-guesser:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/word-guess:latest
+          platforms: linux/arm64
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
           push: true
 
+      - name: Remove local images after build
+        run: docker images --format "{{.Repository}}:{{.Tag}}" | grep 'word-guess' | xargs docker rmi -f
+
       - name: Deploy to server
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USERNAME }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          password: ${{ secrets.SERVER_PASSWORD }}
-          script: |
-            docker pull {{ secrets.DOCKER_USERNAME }}/word-guesser:latest
-            docker stop word-guesser || true
-            docker rm word-guesser || true
-            docker run -d --name word-guesser --network tunnel -p 8080:42069 {{ secrets.DOCKER_USERNAME }}/word-guesser:latest
+        env:
+          HOST: ${{secrets.SERVER_HOST}}
+          USERNAME: ${{ secrets.SERVER_USERNAME }}
+          KEY: ${{ secrets.SERVER_SSH_KEY }}
+        run: |
+          export PRIVATE_KEY_PATH=$(mktemp)
+          echo "$KEY" > $PRIVATE_KEY_PATH
+          chmod 600 "$PRIVATE_KEY_PATH"
+
+          ssh -i $PRIVATE_KEY_PATH -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $HOST "\
+           docker pull {{ secrets.DOCKER_USERNAME }}/word-guess:latest
+           docker stop word-guess || true
+           docker rm word-guess || true
+           docker run -d --name word-guess --network tunnel -p 8080:42069 {{ secrets.DOCKER_USERNAME }}/word-guess:latest"
+          rm "$PRIVATE_KEY_PATH"
