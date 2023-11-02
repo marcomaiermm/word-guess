@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc src/index.ts --outDir dist",
-    "tailwind": "npx tailwindcss -i ./css/input.css -o ./dist/main.css --watch"
+    "tailwind:dev": "npx tailwindcss -i ./css/input.css -o ./dist/main.css --watch",
+    "tailwind:build": "npx tailwindcss -i ./css/input.css -o ./dist/main.css"
   },
   "keywords": [],
   "author": "",

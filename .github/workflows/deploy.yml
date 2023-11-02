@@ -1,0 +1,40 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main # or whichever branch you want the deployment from
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@main
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build App
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          tags: ${{ secrets.DOCKER_USERNAME }}/word-guesser:latest
+          push: true
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            docker pull {{ secrets.DOCKER_USERNAME }}/word-guesser:latest
+            docker stop word-guesser || true
+            docker rm word-guesser || true
+            docker run -d --name word-guesser --network tunnel -p 8080:42069 {{ secrets.DOCKER_USERNAME }}/word-guesser:latest

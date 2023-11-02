@@ -1,0 +1,10 @@
+main
+/tmp
+
+node_modules
+dist
+
+# db
+*.sqlite3
+*.sqlite
+*.db
