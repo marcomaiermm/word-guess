@@ -69,12 +69,12 @@ jobs:
           -v wordle-data:/database.db \
           -l traefik.enable=true \
           -l traefik.http.services.wordle.loadbalancer.server.port=42069 \
-          -l traefik.http.routers.wordle-http.entrypoints=http \
-          -l traefik.http.routers.wordle-http.rule=Host(`wordle.marcomaier.dev`) \
-          -l traefik.http.routers.wordle-https.entrypoints=https \
-          -l traefik.http.routers.wordle-https.rule=Host(`wordle.marcomaier.dev`) \
-          -l traefik.http.routers.wordle-https.tls=true \
-          -l traefik.http.middlewares.https-redirect.redirectscheme.scheme=https \
-          -l traefik.http.middlewares.https-redirect.redirectscheme.permanent=true \
-          -l traefik.http.routers.wordle-http.middlewares=https-redirect \
+          -l "traefik.http.routers.wordle-http.entrypoints=http" \
+          -l "traefik.http.routers.wordle-http.rule=Host(\`wordle.marcomaier.dev\`)" \
+          -l "traefik.http.routers.wordle-https.entrypoints=https" \
+          -l "traefik.http.routers.wordle-https.rule=Host(\`wordle.marcomaier.dev\`)" \
+          -l "traefik.http.routers.wordle-https.tls=true" \
+          -l "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https" \
+          -l "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true" \
+          -l "traefik.http.routers.wordle-http.middlewares=https-redirect" \
           ravicmco/word-guess:latest
