@@ -75,7 +75,7 @@ func setupSession(c echo.Context, path string) *sessions.Session {
 func Index(c echo.Context) error {
 	setupSession(c, "/")
 
-	game, err := database.CreateGame(5)
+	game, err := database.CreateGame(6)
 	if err != nil {
 		fmt.Println(err)
 		return c.NoContent(500)
