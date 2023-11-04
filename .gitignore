@@ -8,3 +8,9 @@ dist
 *.sqlite3
 *.sqlite
 *.db
+
+# OS files
+.DS_Store
+ehthumbs.db
+Icon?
+Thumbs.db

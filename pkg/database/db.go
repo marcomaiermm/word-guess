@@ -49,7 +49,6 @@ func Seed() error {
 	}
 
 	// if there are no words in the database, seed it.
-	// Get the words from the file data.txt. The first line is a comment in the file, so we skip it.
 	// Split the words by new line and insert them into the database.
 	const BATCH_SIZE = 500
 	if err == sql.ErrNoRows {
@@ -57,7 +56,7 @@ func Seed() error {
 		if err != nil {
 			return err
 		}
-		lines := strings.Split(string(words), "\n")[1:] // Skip the first line
+		lines := strings.Split(string(words), "\n")
 
 		for i := 0; i < len(lines); i += BATCH_SIZE {
 			endIndex := i + BATCH_SIZE
