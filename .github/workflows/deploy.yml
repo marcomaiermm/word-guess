@@ -6,7 +6,7 @@ on:
       - main # or whichever branch you want the deployment from
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -39,22 +39,40 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
           push: true
 
-      - name: Remove local images after build
-        run: docker images --format "{{.Repository}}:{{.Tag}}" | grep 'word-guess' | xargs docker rmi -f
+  deploy:
+    runs-on: self-hosted
+    setps:
+      - uses: actions/checkout@main
 
-      - name: Deploy to server
-        env:
-          HOST: ${{secrets.SERVER_HOST}}
-          USERNAME: ${{ secrets.SERVER_USERNAME }}
-          KEY: ${{ secrets.SERVER_SSH_KEY }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Pull the latest Docker image
+        run: docker pull ravicmco/word-guess:latest
+
+      - name: Stop and remove the previous container (if exists)
         run: |
-          export PRIVATE_KEY_PATH=$(mktemp)
-          echo "$KEY" > $PRIVATE_KEY_PATH
-          chmod 600 "$PRIVATE_KEY_PATH"
+          docker stop wordle || true
+          docker rm wordle || true
 
-          ssh -i $PRIVATE_KEY_PATH -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $HOST "\
-           docker pull {{ secrets.DOCKER_USERNAME }}/word-guess:latest
-           docker stop word-guess || true
-           docker rm word-guess || true
-           docker run -d --name word-guess --network tunnel -p 8080:42069 {{ secrets.DOCKER_USERNAME }}/word-guess:latest"
-          rm "$PRIVATE_KEY_PATH"
+      - name: Start container
+        run: |
+          docker run -d \
+          --name wordle \
+          --network cloudflaretunnel \
+          --restart unless-stopped \
+          -v wordle-data:/database.db \
+          -l traefik.enable=true \
+          -l traefik.http.services.wordle.loadbalancer.server.port=42069 \
+          -l traefik.http.routers.wordle-http.entrypoints=http \
+          -l "traefik.http.routers.wordle-http.rule=Host(`wordle.marcomaier.dev`)" \
+          -l traefik.http.routers.wordle-https.entrypoints=https \
+          -l "traefik.http.routers.wordle-https.rule=Host(`wordle.marcomaier.dev`)" \
+          -l traefik.http.routers.wordle-https.tls=true \
+          -l traefik.http.middlewares.https-redirect.redirectscheme.scheme=https \
+          -l traefik.http.middlewares.https-redirect.redirectscheme.permanent=true \
+          -l traefik.http.routers.wordle-http.middlewares=https-redirect \
+          ravicmco/word-guess:latest
