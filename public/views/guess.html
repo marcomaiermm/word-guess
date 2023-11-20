@@ -1,6 +1,7 @@
 <form
   hx-patch="/game/{{.UUID}}"
   hx-target="#content"
+  hx-on::before-request="plausible('Guess')"
   hx-on::after-request="this.reset()"
 >
   <div class="flex gap-1">

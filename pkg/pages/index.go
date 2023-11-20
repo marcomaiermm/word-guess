@@ -32,7 +32,7 @@ type IndexPage struct {
 	Lost bool
 }
 
-func createGuess(word string, symbols []string, guess string) *[]GuessRow {
+func createGuess(word string, symbols []string, _ string) *[]GuessRow {
 	rows := make([]GuessRow, len(symbols))
 
 	for i := range rows {
@@ -97,12 +97,32 @@ func Index(c echo.Context) error {
 	})
 }
 
+func NewGameFragment(c echo.Context) error {
+	game, err := database.CreateGame(6)
+	if err != nil {
+		fmt.Println(err)
+		return c.NoContent(500)
+	}
+
+	symbols := strings.Split(game.Symbols, ",")[:game.Rows]
+
+	rows := createGuess(game.Word, symbols, "")
+
+	return c.Render(200, "content.html", GuessResponse{
+		UUID: game.UUID,
+		Rows: *rows,
+		Won:  false,
+		Lost: false,
+		Word: game.Word,
+	})
+}
+
 type GuessResponse struct {
 	UUID string
+	Word string
 	Rows []GuessRow
 	Won  bool
 	Lost bool
-	Word string
 }
 
 func Guess(c echo.Context) error {

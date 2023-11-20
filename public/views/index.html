@@ -11,12 +11,22 @@
       data-domain="wordle.marcomaier.dev"
       src="https://plausible.marcomaier.dev/js/script.js"
     ></script>
+    <script>
+      window.plausible =
+        window.plausible ||
+        function () {
+          (window.plausible.q = window.plausible.q || []).push(arguments);
+        };
+    </script>
     <link href="/dist/main.css" rel="stylesheet" />
   </head>
   <body class="flex min-h-screen flex-col bg-background text-foreground">
     {{template "nav.html" .}}
     <div class="py-8"></div>
-    <main class="container flex flex-1 flex-col items-center justify-center">
+    <main
+      id="main-container"
+      class="container flex flex-1 flex-col items-center justify-center"
+    >
       {{ template "content.html" . }}
     </main>
     <div class="py-8"></div>

@@ -72,6 +72,7 @@ func main() {
 	e.Static("/dist", "dist")
 
 	e.GET("/", pages.Index)
+	e.GET("/fragment/new", pages.NewGameFragment)
 	e.PATCH("/game/:id", pages.Guess)
 
 	e.Logger.Fatal(e.Start(":42069"))

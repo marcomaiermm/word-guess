@@ -1,11 +1,18 @@
-<section>
+<section hx-boos="true">
   <!--W-->
   {{if .Won}}
-  <p class="text-center text-xl text-lime-500">You won!</p>
+  <p
+    hx-on:htmx:load="plausible('Won')"
+    class="text-center text-xl text-lime-500"
+  >
+    You won!
+  </p>
   {{end}}
   <!--L-->
   {{if .Lost}}
-  <p class="text-center text-rose-500">Awww sad... you lost</p>
+  <p hx-on:htmx:load="plausible('Lost')" class="text-center text-rose-500">
+    Awww sad... you lost
+  </p>
   <div class="pt-4"></div>
   <p class="text-center">The word was:</p>
   <p class="text-center text-2xl font-bold text-amber-500">{{.Word}}</p>
@@ -13,7 +20,16 @@
   <!--Game Over-->
   {{if or .Won .Lost}}
   <div class="flex justify-center">
-    <a href="/" class="text-amber-500 hover:underline"> Play again </a>
+    <button
+      hx-get="/fragment/new"
+      hx-on:htmx:before-request="plausible('Play Again')"
+      hx-push-url="/"
+      hx-target="#main-container"
+      hx-swap="innerHTML"
+      class="text-amber-500 hover:underline"
+    >
+      Play again
+    </button>
   </div>
   {{end}}
 </section>
